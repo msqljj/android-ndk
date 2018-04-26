@@ -17,36 +17,53 @@
 cmake_minimum_required(VERSION 3.4.1)
 
 # build native_app_glue as a static lib
-add_library(native_app_glue STATIC
-    ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -fno-exceptions -fno-rtti")
+add_library(nativeAppGlue STATIC
+  ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 
 # build the ndk-helper library
-set(ndk_helper_dir ../../../../common/ndk_helper)
-add_subdirectory(${ndk_helper_dir} ndk_helper)
-
-# Export ANativeActivity_onCreate(), 
-# Refer to: https://github.com/android-ndk/ndk/issues/381.
-set(CMAKE_SHARED_LINKER_FLAGS
-    "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
+set(ndkHelperSrc ../../../../common/ndk_helper)
+add_subdirectory(${ndkHelperSrc} ndkHelperBin)
 
 # now build app's shared lib
-add_library(ChoreographerNativeActivity SHARED
+add_library(ChoreographerNativeActivity
+  SHARED
     ChoreographerNativeActivity.cpp
-    TeapotRenderer.cpp)
+    TeapotRenderer.cpp
+)
 
-target_include_directories(ChoreographerNativeActivity PRIVATE
+set_target_properties(ChoreographerNativeActivity
+  PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+)
+target_compile_features(ChoreographerNativeActivity
+  PRIVATE cxx_noexcept
+)
+target_compile_options(ChoreographerNativeActivity
+  PRIVATE -Wall -Werror -fno-rtti
+)
+
+# Export ANativeActivity_onCreate(),
+# Refer to: https://github.com/android-ndk/ndk/issues/381.
+set(CMAKE_SHARED_LINKER_FLAGS
+  "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
+
+target_include_directories(ChoreographerNativeActivity
+  PRIVATE
     ${ANDROID_NDK}/sources/android/cpufeatures
     ${ANDROID_NDK}/sources/android/native_app_glue
-    ${ndk_helper_dir})
+    ${ndkHelperSrc}
+)
 
 # add lib dependencies
 target_link_libraries(ChoreographerNativeActivity
+  PRIVATE
     android
-    native_app_glue
+    log
     atomic
     EGL
     GLESv2
-    log
-    ndk-helper)
+    nativeAppGlue
+    ndkHelper
+)

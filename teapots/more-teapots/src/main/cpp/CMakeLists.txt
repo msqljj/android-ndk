@@ -17,36 +17,51 @@
 cmake_minimum_required(VERSION 3.4.1)
 
 # build native_app_glue as a static lib
-add_library(native_app_glue STATIC
+add_library(nativeAppGlue STATIC
     ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -fno-exceptions -fno-rtti")
-
 # build the ndk-helper library
-set(ndk_helper_dir ../../../../common/ndk_helper)
-add_subdirectory(${ndk_helper_dir} ndk_helper)
+set(ndkHelperSrc ../../../../common/ndk_helper)
+add_subdirectory(${ndkHelperSrc} ndkHelperBin)
 
-# Export ANativeActivity_onCreate(), 
+# now build app's shared lib
+add_library(MoreTeapotsNativeActivity
+  SHARED
+    MoreTeapotsNativeActivity.cpp
+    MoreTeapotsRenderer.cpp
+)
+set_target_properties(MoreTeapotsNativeActivity
+  PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+)
+target_compile_features(MoreTeapotsNativeActivity
+  PRIVATE cxx_noexcept
+)
+target_compile_options(MoreTeapotsNativeActivity
+  PRIVATE
+    -Wall -Werror -fno-rtti
+)
+# Export ANativeActivity_onCreate(),
 # Refer to: https://github.com/android-ndk/ndk/issues/381.
 set(CMAKE_SHARED_LINKER_FLAGS
     "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
-# now build app's shared lib
-add_library(MoreTeapotsNativeActivity SHARED
-    MoreTeapotsNativeActivity.cpp
-    MoreTeapotsRenderer.cpp)
-
-target_include_directories(MoreTeapotsNativeActivity PRIVATE
+target_include_directories(MoreTeapotsNativeActivity
+  PRIVATE
     ${ANDROID_NDK}/sources/android/cpufeatures
     ${ANDROID_NDK}/sources/android/native_app_glue
-    ${ndk_helper_dir})
+    ${ndkHelperSrc})
 
 # add lib dependencies
 target_link_libraries(MoreTeapotsNativeActivity
+  PRIVATE
     android
-    native_app_glue
+    log
     atomic
     EGL
     GLESv2
-    log
-    ndk-helper)
+    nativeAppGlue
+    ndkHelper
+)
